@@ -1,0 +1,54 @@
+# Stateful workload with zonal EBS volume.
+# During a zonal shift affecting the volume's AZ, this pod will remain Pending
+# because the EBS volume cannot move across AZs. This is expected behavior.
+# Karpenter will not attempt to launch a node in the impaired AZ for this pod.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-volume-zonal
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: gp2
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app-stateful
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: web-app-stateful
+  template:
+    metadata:
+      labels:
+        app: web-app-stateful
+    spec:
+      nodeSelector:
+        intent: arc-zonal-shift
+      tolerations:
+        - key: "intent"
+          operator: "Equal"
+          value: "arc-zonal-shift"
+          effect: "NoSchedule"
+      containers:
+        - name: web-app
+          image: public.ecr.aws/eks-distro/kubernetes/pause:v1.33.0-eks-1-33-4
+          imagePullPolicy: Always
+          resources:
+            requests:
+              cpu: 256m
+              memory: 256Mi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: data-volume-zonal
