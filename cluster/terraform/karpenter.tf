@@ -18,6 +18,9 @@ module "karpenter" {
   node_iam_role_name              = local.name
   create_pod_identity_association = true
 
+  # Use inline policy to avoid the 6144 character limit for standard IAM policies
+  enable_inline_policy = true
+
   tags = local.tags
 }
 

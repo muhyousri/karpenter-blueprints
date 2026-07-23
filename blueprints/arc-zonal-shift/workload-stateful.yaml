@@ -30,13 +30,6 @@ spec:
       labels:
         app: web-app-stateful
     spec:
-      nodeSelector:
-        intent: arc-zonal-shift
-      tolerations:
-        - key: "intent"
-          operator: "Equal"
-          value: "arc-zonal-shift"
-          effect: "NoSchedule"
       containers:
         - name: web-app
           image: public.ecr.aws/eks-distro/kubernetes/pause:v1.33.0-eks-1-33-4
