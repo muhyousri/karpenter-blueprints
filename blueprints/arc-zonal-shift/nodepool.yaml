@@ -1,0 +1,41 @@
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: arc-zonal-shift
+spec:
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 1m
+  limits:
+    cpu: 100
+    memory: 200Gi
+  template:
+    metadata:
+      labels:
+        intent: arc-zonal-shift
+    spec:
+      expireAfter: 168h0m0s
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        name: default
+        kind: EC2NodeClass
+      requirements:
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        - key: kubernetes.io/os
+          operator: In
+          values: ["linux"]
+        - key: karpenter.k8s.aws/instance-category
+          operator: In
+          values: ["c", "m", "r"]
+        - key: karpenter.k8s.aws/instance-generation
+          operator: Gt
+          values: ["5"]
+      taints:
+        - key: intent
+          value: arc-zonal-shift
+          effect: NoSchedule
