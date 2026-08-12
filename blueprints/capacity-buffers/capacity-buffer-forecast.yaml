@@ -1,0 +1,9 @@
+apiVersion: autoscaling.x-k8s.io/v1beta1
+kind: CapacityBuffer
+metadata:
+  name: forecast-driven-buffer
+spec:
+  provisioningStrategy: "buffer.x-k8s.io/active-capacity"
+  podTemplateRef:
+    name: web-buffer-template
+  replicas: 0

@@ -1,0 +1,57 @@
+---
+# The blueprint's own NodePool. Points at the cluster's shared 'default'
+# EC2NodeClass (the one created by the repo's cluster template) — no separate
+# EC2NodeClass is needed for this blueprint. Workloads set
+# nodeSelector: blueprint=balanced-consolidation so they only land here,
+# leaving 'default' free for other blueprints or workloads.
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: balanced-consolidation
+spec:
+  template:
+    metadata:
+      labels:
+        blueprint: balanced-consolidation
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: default
+      # Requirements pinned tightly so consolidation transitions are visible
+      # by watching instance-type changes across scale steps:
+      # - c/m/r families cover common workload shapes; Karpenter picks the
+      #   cheapest option per step (typically c*.xlarge for CPU-bound loads)
+      # - excluding small sizes forces xlarge or larger, so replace-with-smaller
+      #   moves are meaningful (e.g. 2xlarge -> xlarge) rather than getting
+      #   lost in nano/micro noise
+      # - on-demand only; spot introduces price variability that muddles the demo
+      requirements:
+        - key: karpenter.k8s.aws/instance-category
+          operator: In
+          values: ["c", "m", "r"]
+        - key: karpenter.k8s.aws/instance-generation
+          operator: Gt
+          values: ["2"]
+        - key: karpenter.k8s.aws/instance-size
+          operator: NotIn
+          values: ["nano", "micro", "small", "medium", "large"]
+        - key: karpenter.k8s.aws/instance-hypervisor
+          operator: In
+          values: ["nitro"]
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]
+      expireAfter: 720h
+  limits:
+    cpu: "100"
+    memory: 400Gi
+  disruption:
+    # Balanced (Karpenter v1.14+) scores every consolidation action.
+    # A move is approved when score = savings_fraction / disruption_fraction
+    # >= 1/k, where k=2, so the effective approval threshold is 0.5.
+    consolidationPolicy: Balanced
+    consolidateAfter: 30s

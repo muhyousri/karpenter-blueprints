@@ -1,0 +1,39 @@
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: capacity-buffer
+spec:
+  limits:
+    cpu: 100
+    memory: 100Gi
+  template:
+    metadata:
+      labels:
+        intent: capacity-buffer
+    spec:
+      # Reuses the cluster's shared 'default' EC2NodeClass (created by the
+      # repo's cluster template). Nothing about scenarios 1, 2, and 4 needs a
+      # different AMI or networking setup, so no dedicated EC2NodeClass is
+      # required. The GPU scenario is the exception, see gpu-nodepool.yaml.
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        name: default
+        kind: EC2NodeClass
+      requirements:
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]
+        - key: karpenter.k8s.aws/instance-category
+          operator: In
+          values: ["c", "m", "r"]
+        - key: karpenter.k8s.aws/instance-size
+          operator: NotIn
+          values: ["nano", "micro", "small", "medium"]
+      taints:
+        - key: intent
+          value: capacity-buffer
+          effect: NoSchedule
+      expireAfter: 720h
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 1m

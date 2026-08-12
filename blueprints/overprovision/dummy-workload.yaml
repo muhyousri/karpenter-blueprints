@@ -33,10 +33,10 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               - matchExpressions:
-                  - key: karpenter.k8s.aws/instance-category
+                  - key: eks.amazonaws.com/instance-category
                     operator: In
                     values: ["m"]
-                  - key: karpenter.k8s.aws/instance-size
+                  - key: eks.amazonaws.com/instance-size
                     operator: In
                     values: ["xlarge"]
       containers:

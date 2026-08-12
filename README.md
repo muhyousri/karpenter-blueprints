@@ -158,7 +158,8 @@ Here's the list of blueprints we have so far:
 | [Split Between On-Demand & Spot Instances](/blueprints/od-spot-split/) | ✅ | ✅ |
 | [Prioritize Reserved Capacity with Savings Plans and/or Reserved Instances](/blueprints/reserved-capacity/) | ✅ | ✅ |
 | [Working with Graviton Instances](/blueprints/graviton) | ✅ | ✅ |
-| [Overprovision capacity in advance to increase responsiveness](/blueprints/overprovision/) | ✅ | ✅ |
+| [Pre-provision spare capacity with CapacityBuffers](/blueprints/capacity-buffers/) | ✅ | ❌ |
+| [Overprovision capacity in advance to increase responsiveness (EKS Auto Mode)](/blueprints/overprovision/) | ❌ | ✅ |
 | [Using multiple EBS volumes](/blueprints/multi-ebs/) | ✅ | ❌ |
 | [Working with Stateful Workloads using EBS](/blueprints/stateful/) | ✅ | ✅ |
 | [Update Nodes using Drift](/blueprints/update-nodes-with-drift/) | ✅ | ✅ |
@@ -166,6 +167,7 @@ Here's the list of blueprints we have so far:
 | [Customizing nodes with your own User Data automation](/blueprints/userdata/) | ✅ | ❌ |
 | [Protecting batch jobs during the consolidation process](/blueprints/batch-jobs/) | ✅ | ✅ |
 | [NodePool Disruption Budgets](/blueprints/disruption-budgets/) | ✅ | ✅ |
+| [Balanced Consolidation Policy](/blueprints/balanced-consolidation/) | ✅ | ❌ |
 | [Deploy an NVIDIA GPU workload](/blueprints/nvidia-gpu-workload/) | ✅ | ✅ |
 | [Accelerating image pull time using SOCI parallel mode](/blueprints/soci-snapshotter/) | ✅ | ✅ |
 | [Reserve node capacity for spiky workloads](/blueprints/node-reserved-headroom/) | ✅ | ✅ |
@@ -174,6 +176,7 @@ Here's the list of blueprints we have so far:
 | [Deploy an AWS Trainium or AWS Inferentia workload](/blueprints/neuron-workload) | ✅ | ✅ |
 | [Using Static NodePools for static capacity](/blueprints/static-nodepool) | ✅ | ✅ |
 | [ARC Zonal Shift — Native Karpenter integration with Amazon Application Recovery Controller](/blueprints/arc-zonal-shift/) | ✅ | ❌ |
+| [Nested virtualization on EC2](/blueprints/nested-virtualization) | ✅ | ❌ |
 
 **NOTE:** Each blueprint is independent from each other, so you can deploy and test multiple blueprints at the same time in the same Kubernetes cluster. However, to reduce noise, we recommend you to test one blueprint at a time.
 
@@ -184,7 +187,7 @@ The following table describes the list of resources along with the versions wher
 | Resources/Tool  | Version             |
 | --------------- | ------------------- |
 | [Kubernetes](https://kubernetes.io/releases/)      | 1.34                |
-| [Karpenter](https://github.com/aws/karpenter/releases)       | v1.8.3            |
+| [Karpenter](https://github.com/aws/karpenter/releases)       | v1.14.0           |
 | [Terraform](https://github.com/hashicorp/terraform/releases)       | v1.14.2            |
 | [AWS EKS](https://github.com/terraform-aws-modules/terraform-aws-eks/releases)  | v21.10.1             |
 | [EKS Blueprints Addons](https://github.com/aws-ia/terraform-aws-eks-blueprints-addons/releases)  | v1.22.0              |

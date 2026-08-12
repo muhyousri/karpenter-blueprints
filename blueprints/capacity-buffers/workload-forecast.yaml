@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app-forecast
+spec:
+  replicas: 0 # scaled up once the simulated forecast window elapses
+  selector:
+    matchLabels:
+      app: web-app-forecast
+  template:
+    metadata:
+      labels:
+        app: web-app-forecast
+    spec:
+      nodeSelector:
+        intent: capacity-buffer
+      tolerations:
+        - key: intent
+          value: capacity-buffer
+          effect: NoSchedule
+      containers:
+      - name: web-app-forecast
+        image: public.ecr.aws/eks-distro/kubernetes/pause:v1.33.0-eks-1-33-4
+        resources:
+          requests:
+            cpu: "1"
+            memory: "1Gi"

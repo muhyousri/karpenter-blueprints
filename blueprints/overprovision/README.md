@@ -1,20 +1,16 @@
-# Karpenter Blueprint: Overprovision capacity in advance to increase responsiveness
+# Karpenter Blueprint: Overprovision capacity in advance to increase responsiveness (EKS Auto Mode)
 
 ## Note
 
-Starting in v1.8.0, Karpenter natively supports [static capacity](https://karpenter.sh/docs/concepts/nodepools/#static-nodepool), an [Alpha feature gate](https://karpenter.sh/docs/reference/settings/#feature-gates) that maintains a fixed node count regardless of pod demand. Static capacity addresses these use cases: 
+**If you're running Karpenter OSS (not EKS Auto Mode), use [`capacity-buffers`](../capacity-buffers/) instead.** CapacityBuffers pre-provision real, `Ready` nodes ahead of demand using virtual placeholder pods that only exist in Karpenter's scheduling simulation, no dummy Deployment, no preemption overhead, and no manual instance-shape guesswork. This blueprint's dummy-workload pattern predates that feature and remains here **only** because CapacityBuffers are not yet supported on EKS Auto Mode (Auto Mode doesn't expose Karpenter feature gates).
 
-1. Performance-critical applications where just-in-time provisioning latency is unacceptable
-2. Workloads that require predictable, always-available capacity
-3. Operational models that rely on a fixed number of nodes for budgeting, isolation, or infrastructure boundary
-
-Static capacity does not scale nodes to keep overprovision. Use this blueprint, if your use case requires keeping your cluster overprovisioned.
+Separately, Karpenter also supports [static capacity](https://karpenter.sh/docs/concepts/nodepools/#static-nodepool) (`spec.replicas` on a NodePool), which maintains a fixed node count regardless of pod demand but is excluded from cost-based consolidation entirely. See [`static-nodepool`](../static-nodepool/) if that fits your use case better than overprovisioning.
 
 ## Purpose
 
-This blueprint keeps your cluster overprovisioned so workloads are scheduled almost instantly. It deploys a dummy workload with a low [PriorityClass](https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass) to reserve capacity. When real workloads arrive, the dummy pods are preempted and your pods start on already-provisioned nodes.
+This blueprint keeps your EKS Auto Mode cluster overprovisioned so workloads are scheduled almost instantly. It deploys a dummy workload with a low [PriorityClass](https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass) to reserve capacity. When real workloads arrive, the dummy pods are preempted and your pods start on already-provisioned nodes.
 
-With a flexible `NodePool` (a [recommended practice](https://aws.github.io/aws-eks-best-practices/karpenter/) for efficient compute), Karpenter optimizes for cost — meaning a single dummy pod would trigger a small, cheap instance that doesn't represent useful overprosion. This blueprint uses `nodeAffinity` to guarantee minimum instance requirements on the dummy workload, and `podAntiAffinity` to ensure each replica reserves a separate node. Together, the replica count controls how many right-sized nodes are kept overprovisioned. Adjust the `nodeAffinity` constraints to match your actual workload's instance requirements so the overprovisioned nodes are genuinely useful when preemption happens.
+With a flexible `NodePool` (a [recommended practice](https://aws.github.io/aws-eks-best-practices/karpenter/) for efficient compute), Karpenter optimizes for cost — meaning a single dummy pod would trigger a small, cheap instance that doesn't represent useful overprovision. This blueprint uses `nodeAffinity` to guarantee minimum instance requirements on the dummy workload, and `podAntiAffinity` to ensure each replica reserves a separate node. Together, the replica count controls how many right-sized nodes are kept overprovisioned. Adjust the `nodeAffinity` constraints to match your actual workload's instance requirements so the overprovisioned nodes are genuinely useful when preemption happens.
 
 This pattern is useful in scenarios where provisioning latency directly impacts workload performance, for example:
 
@@ -26,8 +22,25 @@ This pattern is useful in scenarios where provisioning latency directly impacts 
 
 ## Requirements
 
-* A Kubernetes cluster with Karpenter installed. You can use the blueprint we've used to test this pattern at the `cluster` folder in the root of this repository.
-* A `default` Karpenter `NodePool` as that's the one we'll use in this blueprint. You did this already in the ["Deploy a Karpenter Default EC2NodeClass and NodePool"](../../README.md) section from this repository.
+* An EKS cluster with Auto Mode enabled, and an EKS Access Entry granting `AmazonEKSAutoNodePolicy` to the node IAM role used by Auto Mode.
+* This blueprint uses the default `NodeClass` (`eks.amazonaws.com/v1`) and requires no custom `NodePool` or `NodeClass` manifests.
+
+> If you're using the Terraform template under [`cluster/automode/`](../../cluster/automode/) in this repo, the cluster, node IAM role, and Access Entry are all created for you — you can skip the manual Access Entry step below.
+
+If you are **not** using the `cluster/automode/` Terraform template, configure the Access Entry manually:
+
+```sh
+aws eks create-access-entry \
+  --cluster-name $CLUSTER_NAME \
+  --principal-arn <node-role-arn> \
+  --type EC2
+
+aws eks associate-access-policy \
+  --cluster-name $CLUSTER_NAME \
+  --principal-arn <node-role-arn> \
+  --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSAutoNodePolicy \
+  --access-scope type=cluster
+```
 
 ## Deploy
 
@@ -107,35 +120,6 @@ NAME            TYPE         ZONE         NODE                          READY   
 default-nzg92   m6g.xlarge   us-east-1c   ip-10-0-44-194.ec2.internal   True    2m16s
 default-xrvmt   m6g.xlarge   us-east-1c   ip-10-0-34-140.ec2.internal   True    2m16s
 ```
-
-<details>
-<summary><strong>EKS Auto Mode</strong></summary>
-
-**Prerequisite:** an EKS cluster with Auto Mode enabled, and an EKS Access Entry granting `AmazonEKSAutoNodePolicy` to the node IAM role used by Auto Mode.
-
-> If you're using the Terraform template under [`cluster/automode/`](../../cluster/automode/) in this repo, the cluster, node IAM role, and Access Entry are all created for you — you can skip the manual access entry steps below.
-
-This blueprint uses the default NodePool and requires no custom NodePool or EC2NodeClass manifests. The workload runs as-is on an EKS Auto Mode cluster with the default `NodeClass` (`eks.amazonaws.com/v1`).
-
-```sh
-kubectl apply -f .
-```
-
-If you are **not** using the `cluster/automode/` Terraform template, configure the Access Entry manually:
-
-```sh
-aws eks create-access-entry \
-  --cluster-name $CLUSTER_NAME \
-  --principal-arn <node-role-arn> \
-  --type EC2
-
-aws eks associate-access-policy \
-  --cluster-name $CLUSTER_NAME \
-  --principal-arn <node-role-arn> \
-  --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSAutoNodePolicy \
-  --access-scope type=cluster
-```
-</details>
 
 ## Cleanup
 

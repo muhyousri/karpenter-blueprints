@@ -1,0 +1,10 @@
+apiVersion: autoscaling.x-k8s.io/v1beta1
+kind: CapacityBuffer
+metadata:
+  name: gpu-inference-buffer
+spec:
+  provisioningStrategy: "buffer.x-k8s.io/active-capacity"
+  podTemplateRef:
+    name: gpu-buffer-template
+  limits:
+    nvidia.com/gpu: "2"

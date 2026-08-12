@@ -34,7 +34,7 @@ resource "helm_release" "karpenter" {
   create_namespace    = true
   repository          = "oci://public.ecr.aws/karpenter"
   chart               = "karpenter"
-  version             = "1.8.3"
+  version             = "1.14.0"
   wait                = false
 
   values = [
@@ -72,6 +72,10 @@ resource "kubectl_manifest" "karpenter_default_ec2_node_class" {
       subnetSelectorTerms:
       - tags:
           karpenter.sh/discovery: ${module.eks.cluster_name}
+      kubelet:
+        systemReserved:
+          cpu: 100m
+          memory: 100Mi
       tags:
         IntentLabel: apps
         KarpenterNodePoolName: default
@@ -115,11 +119,6 @@ resource "kubectl_manifest" "karpenter_default_node_pool" {
             name: default
             group: karpenter.k8s.aws
             kind: EC2NodeClass
-          kubelet:
-            containerRuntime: containerd
-            systemReserved:
-              cpu: 100m
-              memory: 100Mi
       disruption:
         consolidationPolicy: WhenEmptyOrUnderutilized
         consolidateAfter: 1m

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: PodTemplate
+metadata:
+  name: web-buffer-template
+template:
+  spec:
+    containers:
+      - name: placeholder
+        image: public.ecr.aws/eks-distro/kubernetes/pause:v1.33.0-eks-1-33-4
+        resources:
+          requests:
+            cpu: "1"
+            memory: "1Gi"
+    nodeSelector:
+      intent: capacity-buffer
+    tolerations:
+      - key: intent
+        value: capacity-buffer
+        effect: NoSchedule

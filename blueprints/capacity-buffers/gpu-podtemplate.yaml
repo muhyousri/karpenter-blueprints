@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: PodTemplate
+metadata:
+  name: gpu-buffer-template
+template:
+  spec:
+    nodeSelector:
+      intent: gpu-capacity-buffer
+    tolerations:
+      - key: nvidia.com/gpu
+        effect: NoSchedule
+        operator: Exists
+    containers:
+      - name: placeholder
+        image: public.ecr.aws/eks-distro/kubernetes/pause:v1.33.0-eks-1-33-4
+        resources:
+          requests:
+            cpu: "3500m"
+            memory: "8Gi"
+            nvidia.com/gpu: 1
+          limits:
+            nvidia.com/gpu: 1

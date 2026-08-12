@@ -1,0 +1,129 @@
+---
+# PriorityClass resources are cluster-scoped, so their names are prefixed to
+# avoid collision with other blueprints or workloads that also define priorities.
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: balanced-blueprint-low
+value: 100
+globalDefault: false
+description: "Low priority for the Balanced consolidation blueprint. Balanced treats these pods as cheaper to move, so their host is more consolidation-eligible."
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: balanced-blueprint-high
+value: 1000
+globalDefault: false
+description: "High priority for the Balanced consolidation blueprint. Balanced weights disruption of high-priority pods more heavily, protecting their host from consolidation."
+---
+# Baseline deployment used in the WhenEmptyOrUnderutilized comparison and the
+# 'switch to Balanced' step. All workloads in this blueprint use nodeSelector so
+# they land exclusively on nodes provisioned by the blueprint's own NodePool.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: balanced-inflate
+  labels:
+    blueprint: balanced-consolidation
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: balanced-inflate
+  template:
+    metadata:
+      labels:
+        app: balanced-inflate
+        blueprint: balanced-consolidation
+    spec:
+      nodeSelector:
+        blueprint: balanced-consolidation
+      terminationGracePeriodSeconds: 0
+      containers:
+        - name: inflate
+          image: public.ecr.aws/eks-distro/kubernetes/pause:3.7
+          resources:
+            requests:
+              cpu: "1"
+              memory: "1Gi"
+---
+# Low-priority variant for the priority-weighted step. Same nodeSelector so it
+# lands on the blueprint's NodePool.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: balanced-inflate-lowpri
+  labels:
+    blueprint: balanced-consolidation
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: balanced-inflate-lowpri
+  template:
+    metadata:
+      labels:
+        app: balanced-inflate-lowpri
+        blueprint: balanced-consolidation
+    spec:
+      priorityClassName: balanced-blueprint-low
+      nodeSelector:
+        blueprint: balanced-consolidation
+      # Anti-affinity with the high-priority variant so each priority tier lands
+      # on its own node. Makes the priority-weighted walkthrough (README Step 6)
+      # deterministic: we can point at "the low-pri node" and "the high-pri node"
+      # rather than reasoning about pod placement within a shared instance.
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: balanced-inflate-highpri
+              topologyKey: kubernetes.io/hostname
+      terminationGracePeriodSeconds: 0
+      containers:
+        - name: inflate
+          image: public.ecr.aws/eks-distro/kubernetes/pause:3.7
+          resources:
+            requests:
+              cpu: "1"
+              memory: "1Gi"
+---
+# High-priority variant. Balanced weights these pods as more disruptive to move,
+# so their host is less likely to be picked for single-node consolidation.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: balanced-inflate-highpri
+  labels:
+    blueprint: balanced-consolidation
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: balanced-inflate-highpri
+  template:
+    metadata:
+      labels:
+        app: balanced-inflate-highpri
+        blueprint: balanced-consolidation
+    spec:
+      priorityClassName: balanced-blueprint-high
+      nodeSelector:
+        blueprint: balanced-consolidation
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: balanced-inflate-lowpri
+              topologyKey: kubernetes.io/hostname
+      terminationGracePeriodSeconds: 0
+      containers:
+        - name: inflate
+          image: public.ecr.aws/eks-distro/kubernetes/pause:3.7
+          resources:
+            requests:
+              cpu: "1"
+              memory: "1Gi"
